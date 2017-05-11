@@ -202,6 +202,7 @@ end
 ;;display a label with that payoff.
 to get-payoff
   set partner-defected? [defect-now?] of partner
+  if random-float 1 < 0.2 [set partner-defected? (not partner-defected?)] ; Se agrega ruido con 20% de probabilidad.
   ifelse partner-defected? [
     ifelse defect-now? [
       set score (score + 1) set label 1
