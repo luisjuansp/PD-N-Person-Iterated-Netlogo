@@ -173,15 +173,18 @@ to partner-up ;;turtle procedure
   if (not partnered?) [              ;;make sure still not partnered
     rt (random-float 90 - random-float 90) fd 1     ;;move around randomly
     set partner one-of (turtles-at -1 0) with [ not partnered? ]
-    if member? partner blocked-turtles [set partner nobody] ; Stop playing if it is blocked.
     if partner != nobody [              ;;if successful grabbing a partner, partner up
-      set partnered? true
-      set heading 270                   ;;face partner
-      ask partner [
+      ifelse member? partner blocked-turtles or member? self [blocked-turtles] of partner [
+        set partner nobody
+      ] ; Stop playing if it is blocked.
+      [
         set partnered? true
-        set partner myself
-        set heading 90
-      ]
+        set heading 270                   ;;face partner
+        ask partner [
+          set partnered? true
+          set partner myself
+          set heading 90
+        ]]
     ]
   ]
 end
