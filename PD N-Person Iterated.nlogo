@@ -34,6 +34,7 @@ turtles-own [
   partner-history   ;;a list containing information about past interactions
                     ;;with other turtles (indexed by WHO values)
   num-plays
+  blocked-turtles   ;;list of blocked turtles
 ]
 
 
@@ -85,6 +86,7 @@ to setup-common-variables
     set partner nobody
     setxy random-xcor random-ycor
     set num-plays 0
+    set blocked-turtles []
   ]
   setup-history-lists ;;initialize PARTNER-HISTORY list in all turtles
 end
@@ -171,6 +173,7 @@ to partner-up ;;turtle procedure
   if (not partnered?) [              ;;make sure still not partnered
     rt (random-float 90 - random-float 90) fd 1     ;;move around randomly
     set partner one-of (turtles-at -1 0) with [ not partnered? ]
+    if member? partner blocked-turtles [set partner nobody] ; Stop playing if it is blocked.
     if partner != nobody [              ;;if successful grabbing a partner, partner up
       set partnered? true
       set heading 270                   ;;face partner
@@ -209,6 +212,9 @@ to get-payoff
     ] [
       set score (score + 0) set label 0
     ]
+
+    ; Bloqueo a la tortuga que no quiso cooperar.
+    set blocked-turtles fput partner blocked-turtles
   ] [
     ifelse defect-now? [
       set score (score + 5) set label 5
