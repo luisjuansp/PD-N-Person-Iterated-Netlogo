@@ -35,6 +35,7 @@ turtles-own [
                     ;;with other turtles (indexed by WHO values)
   num-plays
   blocked-turtles   ;;list of blocked turtles
+  bound-turtle      ;;turtle that this turtle has hosen as a continuing partner.
 ]
 
 
@@ -87,6 +88,7 @@ to setup-common-variables
     setxy random-xcor random-ycor
     set num-plays 0
     set blocked-turtles []
+    set bound-turtle nobody
   ]
   setup-history-lists ;;initialize PARTNER-HISTORY list in all turtles
 end
@@ -131,7 +133,12 @@ to evolution
     ]
   ]
   let average sum-score / count turtles
-  ask turtles with [average * num-plays - evolution-stall > score ] [ die ]
+  ask turtles with [average * num-plays - evolution-stall > score ] [
+    if bound-turtle != nobody [
+      end-relationship
+    ]
+    die
+  ]
   let hatched 0
   ask turtles with [average * num-plays + evolution-stall < score ] [
     set score average * num-plays
@@ -158,9 +165,11 @@ end
 
 ;;release partner and turn around to leave
 to release-partners
+  if bound-turtle = nobody [
   set partnered? false
   set partner nobody
   rt 180
+  ]
   set label ""
 end
 
@@ -175,8 +184,8 @@ to partner-up ;;turtle procedure
     set partner one-of (turtles-at -1 0) with [ not partnered? ]
     if partner != nobody [              ;;if successful grabbing a partner, partner up
       ifelse member? partner blocked-turtles or member? self [blocked-turtles] of partner [
-        set partner nobody
-      ] ; Stop playing if it is blocked.
+        set partner nobody   ; Stop playing if it is blocked.
+      ]
       [
         set partnered? true
         set heading 270                   ;;face partner
@@ -186,6 +195,13 @@ to partner-up ;;turtle procedure
           set heading 90
         ]]
     ]
+  ]
+end
+
+to end-relationship
+  set bound-turtle nobody
+  ask partner [
+    set bound-turtle nobody
   ]
 end
 
@@ -208,21 +224,28 @@ end
 ;;display a label with that payoff.
 to get-payoff
   set partner-defected? [defect-now?] of partner
-  if random-float 1 < 0.2 [set partner-defected? (not partner-defected?)] ; Se agrega ruido con 20% de probabilidad.
+  if random-float 1 < 0.1 [set partner-defected? (not partner-defected?)] ; Se agrega ruido con 10% de probabilidad.
   ifelse partner-defected? [
+    end-relationship ; End relationship because he deflected me.
+
     ifelse defect-now? [
       set score (score + 1) set label 1
     ] [
       set score (score + 0) set label 0
-    ]
 
-    ; Bloqueo a la tortuga que no quiso cooperar.
-    set blocked-turtles fput partner blocked-turtles
+      ; Bloqueo a la tortuga que no quiso cooperar y yo si.
+      set blocked-turtles fput partner blocked-turtles
+    ]
   ] [
     ifelse defect-now? [
+      end-relationship ; End relationship because he deflected me.
       set score (score + 5) set label 5
     ] [
       set score (score + 3) set label 3
+
+      ;; Start extended partnership
+      set bound-turtle partner
+      ask partner [set bound-turtle myself]
     ]
   ]
 end
