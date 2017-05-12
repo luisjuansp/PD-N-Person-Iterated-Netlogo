@@ -1,6 +1,6 @@
 globals [
   ;;number of turtles with each strategy
-  num-random
+  num-random ;
   num-cooperate
   num-defect
   num-tit-for-tat
@@ -118,42 +118,42 @@ to go
   ask partnered-turtles [ select-action ]           ;;all partnered turtles select action
   ask partnered-turtles [
     play-a-round
-    set num-plays num-plays + 1
+    set num-plays num-plays + 1 ;; agregar conteo para poder tener un promedio de ganancia
   ]
-  evolution
+  if evolution-switch [ evolution ] ; hacer evolucion si esta activado
   do-scoring
   tick
 end
 
-to evolution
-  let sum-score 0
-  ask turtles [
-    if num-plays > 0 [
-      set sum-score sum-score + score / num-plays
+to evolution ; funcion de evolucion
+  let sum-score 0 ; inicializar la variable
+  ask turtles [ ; para todos los agentes
+    if num-plays > 0 [ ; si ya jugo
+      set sum-score sum-score + score / num-plays ; sumar la ganancia a la sumatoria
     ]
   ]
-  let average sum-score / count turtles
-  ask turtles with [average * num-plays - evolution-stall > score ] [
-    if bound-turtle != nobody [
+  let average sum-score / count turtles ; obtener el promedio de ganancia
+  ask turtles with [average * num-plays - evolution-stall > score ] [ ; si un agente va mal
+    if bound-turtle != nobody [ ; romper relaciones
       end-relationship
     ]
-    die
+    die ; mandarla matar
   ]
-  let hatched 0
-  ask turtles with [average * num-plays + evolution-stall < score ] [
-    set score average * num-plays
-    hatch 1 [
+  let hatched 0 ; inizializar la variable para nacidos
+  ask turtles with [average * num-plays + evolution-stall < score ] [ ; si el agente va bien
+    set score average * num-plays ; poner su score normal
+    hatch 1 [ ; clonarse a si mismo, pero inicializado
       set score 0
       set partnered? false
       set partner nobody
       setxy random-xcor random-ycor
       set num-plays 0
     ]
-    set hatched hatched + 1
+    set hatched hatched + 1 ; aumentar el contador
   ]
-  foreach n-values hatched [1] [
-    ask turtles [
-      set partner-history lput false partner-history
+  foreach n-values hatched [1] [ ; por cada nuevo nacido
+    ask turtles [ ; en cada tortuga
+      set partner-history lput false partner-history ; agregar el nuevo nacido
     ]
   ]
 end
@@ -183,7 +183,7 @@ to partner-up ;;turtle procedure
     rt (random-float 90 - random-float 90) fd 1     ;;move around randomly
     set partner one-of (turtles-at -1 0) with [ not partnered? ]
     if partner != nobody [              ;;if successful grabbing a partner, partner up
-      ifelse member? partner blocked-turtles or member? self [blocked-turtles] of partner [
+      ifelse relations and member? partner blocked-turtles or member? self [blocked-turtles] of partner [
         set partner nobody   ; Stop playing if it is blocked.
       ]
       [
@@ -198,7 +198,7 @@ to partner-up ;;turtle procedure
   ]
 end
 
-to end-relationship
+to end-relationship ; funcion para resetear la relacion
   set bound-turtle nobody
   ask partner [
     set bound-turtle nobody
@@ -224,7 +224,7 @@ end
 ;;display a label with that payoff.
 to get-payoff
   set partner-defected? [defect-now?] of partner
-  if random-float 1 < 0.1 [set partner-defected? (not partner-defected?)] ; Se agrega ruido con 10% de probabilidad.
+  if noise-switch and random-float 1 < noise-chance / 100 [set partner-defected? (not partner-defected?)] ; Se agrega ruido con 10% de probabilidad.
   ifelse partner-defected? [
     end-relationship ; End relationship because he deflected me.
 
@@ -238,14 +238,16 @@ to get-payoff
     ]
   ] [
     ifelse defect-now? [
-      end-relationship ; End relationship because he deflected me.
+      end-relationship ; End relationship because he betrayed me.
       set score (score + 5) set label 5
     ] [
       set score (score + 3) set label 3
 
-      ;; Start extended partnership
-      set bound-turtle partner
-      ask partner [set bound-turtle myself]
+      if relations [
+        ;; Start extended partnership
+        set bound-turtle partner
+        ask partner [set bound-turtle myself]
+      ]
     ]
   ]
 end
@@ -617,10 +619,10 @@ NIL
 0
 
 SLIDER
-746
-35
-918
-68
+933
+10
+1105
+43
 evolution-stall
 evolution-stall
 10
@@ -632,10 +634,10 @@ NIL
 HORIZONTAL
 
 PLOT
-764
-101
-1105
-336
+746
+175
+1087
+410
 Strategy Count
 NIL
 NIL
@@ -653,6 +655,54 @@ PENS
 "tit-for-tat" 1.0 0 -13840069 true "" "plot count turtles with [strategy = \"tit-for-tat\"]"
 "unforgiving" 1.0 0 -14835848 true "" "plot count turtles with [strategy = \"unforgiving\"]"
 "unknown" 1.0 0 -5825686 true "" "plot count turtles with [strategy = \"unknown\"]"
+
+SWITCH
+750
+10
+928
+43
+evolution-switch
+evolution-switch
+0
+1
+-1000
+
+SWITCH
+751
+61
+897
+94
+noise-switch
+noise-switch
+0
+1
+-1000
+
+SLIDER
+933
+60
+1105
+93
+noise-chance
+noise-chance
+5
+20
+10.0
+1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+751
+117
+871
+150
+relations
+relations
+0
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -695,9 +745,21 @@ GO: Have the turtles walk around the world and interact.
 
 GO ONCE: Same as GO except the turtles only take one step.
 
+### Switches
+
+EVOLUTION - This gives advantage to the strategies that work good and punishes the ones that do not. When the difference between the average and the current score of an agent is greater than the stalling amount, the agent either multiplies or dies, depending if it is doing good or not.
+
+NOISE - This creates a random chance that the agents will misinterpret the action taken by their partner, but each side is calculated independently.
+
+RELATIONS - This enables the agents to remain with another agent as long as they cooperate, when they defect, they are blacklisted infinetely. 
+
 ### Sliders
 
 N-STRATEGY: Multiple sliders exist with the prefix N- then a strategy name (e.g., n-cooperate). Each of these determines how many turtles will be created that use the STRATEGY. Strategy descriptions are found below:
+
+EVOLUTION-STALL: This regulates how much diference is it needed for an agent to die or multiply.
+
+NOISE-CHANCE: This determines the probability of the action of the partner being misinterpreted.
 
 ### Strategies
 
@@ -711,11 +773,15 @@ TIT-FOR-TAT - If an opponent cooperates on this interaction cooperate on the nex
 
 UNFORGIVING - Cooperate until an opponent defects once, then always defect in each interaction with them.
 
-UNKNOWN - This strategy is included to help you try your own strategies. It currently defaults to Tit-for-Tat.
+UNKNOWN - It analyzes the value of each strategy by comparing the points made over 
+the times it has been played, and copies the strategy that has won the most by that
+point in time.
 
 ### Plots
 
 AVERAGE-PAYOFF - The average payoff of each strategy in an interaction vs. the number of iterations. This is a good indicator of how well a strategy is doing relative to the maximum possible average of 5 points per interaction.
+
+STRATEGY_COUNT - It counts the number of turtles using certain trategy vs. the number of iterations. This is useful to keep track of which strategy is dominating over the others when the evolution is turned on.
 
 ## THINGS TO NOTICE
 
